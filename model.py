@@ -2,28 +2,51 @@ import torch
 import torch.nn as nn
 
 
-class SAE(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder = torch.nn.Sequential(
-            torch.nn.Linear(28 * 28, 800),
-            torch.nn.ReLU(),
-            torch.nn.Linear(800, 200),
-            torch.nn.ReLU(),
-            torch.nn.Linear(200, 50)
+class StackedAutoencoder(nn.Module):
+    def __init__(self, bottleneck_size):
+        super(StackedAutoencoder, self).__init__()
+        self.encoded_feature_size = bottleneck_size
+        # Encoder layers
+        self.encoder = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(28*28, 800),
+            nn.ReLU(),
+            nn.Linear(800, 200),
+            nn.ReLU(),
+            nn.Linear(200, self.encoded_feature_size),  # Bottleneck layer
+            nn.ReLU()
         )
-        self.decoder = torch.nn.Sequential(
-            torch.nn.Linear(50, 200),
-            torch.nn.ReLU(),
-            torch.nn.Linear(200, 800),
-            torch.nn.ReLU(),
-            torch.nn.Linear(800, 28*28),
-            torch.nn.Sigmoid()
+        # Decoder layers
+        self.decoder = nn.Sequential(
+            nn.Linear(self.encoded_feature_size, 200),
+            nn.ReLU(),
+            nn.Linear(200, 800),
+            nn.ReLU(),
+            nn.Linear(800, 28*28),
+            nn.Sigmoid(),
+            nn.Unflatten(1, (28, 28))
         )
+
     def forward(self, x):
-        enc = self.encoder(x)
-        dec = self.decoder(enc)
-        return dec
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        return decoded
+
+class Classifier(nn.Module):
+    def __init__(self, encoded_feature_size, num_classes):
+        super(Classifier, self).__init__()
+        self.encoder = StackedAutoencoder(encoded_feature_size).encoder  # Reuse the encoder
+        self.classifier = nn.Sequential(
+            nn.Linear(encoded_feature_size, num_classes),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        encoded = self.encoder(x)
+        output = self.classifier(encoded)
+        return output
+
+
 
 if __name__=="__main__":
     B, C, H, W = 1, 1, 28, 28
