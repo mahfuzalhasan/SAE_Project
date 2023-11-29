@@ -3,6 +3,8 @@ import torchvision
 from torchvision.datasets import KMNIST # The dataset
 from torch.utils import data
 
+import numpy as np
+
 
 class DatasetKMNIST(data.Dataset):
     def __init__(self, root_path, train=True):
@@ -13,13 +15,13 @@ class DatasetKMNIST(data.Dataset):
         self.train_transform = torchvision.transforms.Compose([
                     torchvision.transforms.RandomPerspective(), 
                     torchvision.transforms.RandomRotation(10, fill=(0,)), 
-                    torchvision.transforms.ToTensor(),
-                    torchvision.transforms.Normalize(self.mean, self.std)
+                    torchvision.transforms.ToTensor()
+                    # torchvision.transforms.Normalize(self.mean, self.std)
                 ])
 
         self.test_transform = torchvision.transforms.Compose([ 
-                    torchvision.transforms.ToTensor(),
-                    torchvision.transforms.Normalize(self.mean, self.std)
+                    torchvision.transforms.ToTensor()
+                    # torchvision.transforms.Normalize(self.mean, self.std)
                 ])
 
     def __len__(self):
@@ -48,12 +50,12 @@ class DatasetKMNIST(data.Dataset):
         # print(img.size, label)
         if self.train:
             img = self.train_transform(img)
-            img = self.add_impulse_noise(img)
         else:
             img = self.test_transform(img)
+        img = self.add_impulse_noise(img)
         label = np.array(label)
         label = torch.from_numpy(label)
-        return noisy_image, label
+        return img, label
 
         
 if __name__=="__main__":

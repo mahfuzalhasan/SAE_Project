@@ -1,11 +1,15 @@
 import torch
 import torch.nn as nn
 
+from discriminative import Discriminative
+
 
 class StackedAutoencoder(nn.Module):
-    def __init__(self, bottleneck_size):
+    def __init__(self, bottleneck_size, batch_size, alpha=0.5, k = 11):
         super(StackedAutoencoder, self).__init__()
         self.encoded_feature_size = bottleneck_size
+        self.batch_size = batch_size
+        self.discriminative = Discriminative(alpha, batch_size, k)
         # Encoder layers
         self.encoder = nn.Sequential(
             nn.Flatten(),
@@ -28,9 +32,12 @@ class StackedAutoencoder(nn.Module):
         )
 
     def forward(self, x):
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return decoded
+        latent = self.encoder(x)
+        batch = x.size(0)
+        flatten_input = x.reshape(batch, -1)
+        non_anchor, anchor = self.discriminative(flatten_input, latent)
+        decoded = self.decoder(latent)
+        return decoded, non_anchor, anchor, latent
 
 class Classifier(nn.Module):
     def __init__(self, encoded_feature_size, num_classes):
