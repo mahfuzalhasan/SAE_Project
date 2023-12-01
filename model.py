@@ -5,11 +5,10 @@ from discriminative import Discriminative
 
 
 class StackedAutoencoder(nn.Module):
-    def __init__(self, bottleneck_size, batch_size, alpha=0.5, k = 11):
+    def __init__(self, bottleneck_size, alpha=0.5, k = 11):
         super(StackedAutoencoder, self).__init__()
         self.encoded_feature_size = bottleneck_size
-        self.batch_size = batch_size
-        self.discriminative = Discriminative(alpha, batch_size, k)
+        self.discriminative = Discriminative(alpha, k)
         # Encoder layers
         self.encoder = nn.Sequential(
             nn.Flatten(),
@@ -40,12 +39,12 @@ class StackedAutoencoder(nn.Module):
         return decoded, non_anchor, anchor, latent
 
 class Classifier(nn.Module):
-    def __init__(self, encoded_feature_size, num_classes):
+    def __init__(self, encoded_feature_size, num_classes, alpha=0.1, k=7):
         super(Classifier, self).__init__()
-        self.encoder = StackedAutoencoder(encoded_feature_size).encoder  # Reuse the encoder
+        self.encoder = StackedAutoencoder(encoded_feature_size, alpha, k).encoder  # Reuse the encoder
         self.classifier = nn.Sequential(
             nn.Linear(encoded_feature_size, num_classes),
-            nn.Sigmoid()
+            nn.LogSoftmax(dim=1)
         )
 
     def forward(self, x):

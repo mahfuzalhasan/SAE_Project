@@ -4,6 +4,10 @@ import numpy as np
 import torchvision
 import torch.nn.functional as F
 
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt # Visulization
+
 def save_model(model, opt, e, save_dir):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -40,7 +44,18 @@ def plot(img_tensor, run_id, epoch, batch, input=True):
         name = f'{i}_inp.jpg' if input else f'{i}_out.jpg'
         noisy_image.save(os.path.join(path, name))
 
-def custom_loss(output, target, non_anchor, anchor, lamda=1):
+def custom_loss(output, target, non_anchor, anchor, lamda=1, lamda_d=0.8):
     reconstruction_loss = lamda * F.mse_loss(output, target)
     latent_loss = torch.sum(non_anchor - anchor)
-    return reconstruction_loss + latent_loss
+    return lamda*reconstruction_loss + lamda_d*latent_loss, lamda*reconstruction_loss, lamda_d*latent_loss
+
+# Add random noise to the images
+def add_noise(images, gray_value, prob=0.1):
+    noisy_images = np.copy(images)
+    output = []
+    for image in noisy_images:
+        rnd = np.random.rand(28,28)
+        noisy = image[:]
+        noisy[rnd < prob] = gray_value 
+        output.append(noisy)
+    return np.asarray(output)

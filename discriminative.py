@@ -4,10 +4,9 @@ import torch.nn.functional as F
 
 class Discriminative(nn.Module):
     
-    def __init__(self, alpha, batch_size, k):
+    def __init__(self, alpha, k):
         super(Discriminative, self).__init__()
         self.alpha = alpha
-        self.batch_size = batch_size
         self.k = k
               
     def forward(self, original, hidden):

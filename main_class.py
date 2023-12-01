@@ -5,8 +5,8 @@ from torch.utils.data import DataLoader # Pytorch data loading utility
 from torch.optim import Adam # Optimizer
 
 from dataset import DatasetKMNIST
-from train import training
-from test import evaluation
+from train import training_classifier
+from test import evaluation_classifier
 from utils import save_model, correntropy
 from model import StackedAutoencoder, Classifier
 
@@ -21,11 +21,11 @@ def Main(run_id):
     EPOCHS = 100
     INIT_LR = 1e-3
     alpha = 0.1
-    k = 10
+    k = 7
     lamda = 1
-    resume = False
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = 'cuda:1'
     
     log_dir = './logs'
     save_log = os.path.join(log_dir, str(run_id))
@@ -42,45 +42,28 @@ def Main(run_id):
     print(f'train ds: {len(train_dataset)} train step: {len(trainDataLoader)}')
     print(f'test ds: {len(test_dataset)} test step: {len(testDataLoader)}')
 
-    bottleneck = 100
+    bottleneck = 50
     num_classes = 10  # Define the number of classes
-    # model = Classifier(bottleneck, num_classes)  # 100 is the size of the bottleneck features
-    model = StackedAutoencoder(bottleneck, alpha, k)
+    model = Classifier(bottleneck, num_classes, alpha, k)
     model.to(device)
-    lossFn = nn.MSELoss()
+    pretrained_ae = f"./saved_models/11-30-23_0446/model_109.pth"
+    state_dict = torch.load(pretrained_ae)['model']
+    model.load_state_dict(state_dict, strict=False)
+    
+    
+    lossFn = nn.NLLLoss()
     optimizer = Adam(model.parameters(), lr=INIT_LR)
-
-    starting_epoch = 0
-    if resume:
-        weight_path = f"./saved_models/11-30-23_0344/model_99.pth"
-        state_dict = torch.load(weight_path)
-        model.load_state_dict(state_dict['model'], strict=True)
-        optimizer.load_state_dict(state_dict['optimizer'])
-        starting_epoch = state_dict['epoch']
-        print("weight loaded")
-
-
-    H = {
-        "train_loss": [],
-        "train_acc": [],
-        "val_loss": [],
-        "val_acc": []
-    }
 
     best_acc = 0
     incident = 0
     plot = False
-    for epoch in range(starting_epoch, EPOCHS):
+    for epoch in range(EPOCHS):
         print(f'####### epoch:{epoch}#########\n')
-        model, loss_train, acc_train = training(trainDataLoader, model, lossFn, optimizer, device, writer, epoch, lamda=lamda)
+        model, loss_train, acc_train = training_classifier(trainDataLoader, model, lossFn, optimizer, device, writer, epoch)
         save_model(model, optimizer, epoch, save_dir=f'./saved_models/{run_id}')
         if epoch%5==0:
             plot=True
-        loss_val, acc_val = evaluation(testDataLoader, model, lossFn, device, writer, epoch, run_id, plot, lamda=lamda)
-        # print(f'loss_T:{loss_train} acc_T:{acc_train} loss_v:{loss_val} acc_V:{acc_val}')
-        # print(f'loss_T:{loss_train}  loss_v:{loss_val} ')
-        
-        plot = False
+        loss_val, acc_val = evaluation_classifier(testDataLoader, model, lossFn, device, writer, epoch)
 
 
         # if best_acc>= acc_val:
